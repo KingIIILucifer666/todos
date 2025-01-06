@@ -7,13 +7,11 @@ import bcrypt from "bcrypt";
 
 const handler = NextAuth({
   providers: [
-    // Google Authentication
     GoogleProvider({
       clientId: process.env.GOOGLE_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     }),
 
-    // Credentials Authentication
     CredentialsProvider({
       name: "Credentials",
       credentials: {
@@ -23,20 +21,13 @@ const handler = NextAuth({
       async authorize(credentials) {
         await connectToDB();
 
-        // Find the user in MongoDB
         const user = await User.findOne({ email: credentials.email }).select(
           "+password"
         );
         if (!user) {
           throw new Error("No user found with this email.");
         }
-        console.log("User: ", user);
 
-        console.log("Credentials: ", credentials);
-        console.log("Password: ", credentials.password);
-        console.log("Hashed Password: ", user.password);
-
-        // Verify the password
         const isPasswordValid = await bcrypt.compare(
           credentials.password,
           user.password
@@ -45,12 +36,11 @@ const handler = NextAuth({
           throw new Error("Invalid email or password.");
         }
 
-        // Return user data
         return {
           id: user._id.toString(),
           email: user.email,
           name: user.username,
-          image: user.image, // optional, if you store it
+          image: user.image,
         };
       },
     }),
@@ -59,10 +49,14 @@ const handler = NextAuth({
     async session({ session, token }) {
       await connectToDB();
 
-      if (token) {
-        session.user.id = token.id;
-        session.user.email = token.email;
-        session.user.name = token.name;
+      if (token.email) {
+        const user = await User.findOne({ email: token.email });
+        if (user) {
+          session.user.id = user._id.toString();
+          session.user.email = user.email;
+          session.user.name = user.username;
+          session.user.image = user.image;
+        }
       }
 
       return session;
@@ -72,6 +66,7 @@ const handler = NextAuth({
         token.id = user.id;
         token.email = user.email;
         token.name = user.name;
+        token.image = user.image;
       }
 
       return token;
@@ -81,17 +76,17 @@ const handler = NextAuth({
         try {
           await connectToDB();
 
-          // Check if user exists
           const userExists = await User.findOne({ email: profile.email });
 
           if (!userExists) {
-            // Create a new user if not found
             await User.create({
               email: profile.email,
               username: profile.name.replace(" ", "").toLowerCase(),
               image: profile.picture,
             });
           }
+
+          profile.id = userExists._id.toString();
 
           return true;
         } catch (error) {
@@ -104,8 +99,8 @@ const handler = NextAuth({
     },
   },
   session: {
-    strategy: "jwt", // Use JWT for sessions
-    maxAge: 30 * 24 * 60 * 60, // Session expiration (optional) - 30 days
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
   },
   secret: process.env.NEXT_AUTH_SECRET,
 });
