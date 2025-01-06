@@ -4,11 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
 import { signIn, useSession, getProviders } from "next-auth/react";
-import axios from "axios";
 
 export default function LoginPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,23 +29,17 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (email && password) {
-      try {
-        const res = await axios.post("/api/auth/login", { email, password });
-        console.log("Results: ", res);
-        if (res.status === 200) {
-          sessionStorage.setItem("token", res.data.token);
+    const result = await signIn("credentials", {
+      redirect: false, // Prevent redirection
+      email,
+      password,
+    });
 
-          router.push("/dashboard");
-        } else {
-          alert(res.data.message || "Something went wrong.");
-        }
-      } catch (error) {
-        console.error("Login Error: ", error);
-        alert("Something went wrong. Please try again.");
-      }
+    console.log("Results: ", result);
+    if (result.error) {
+      console.error("An Error has occuered: ", result.error);
     } else {
-      alert("Please provide both email and password.");
+      console.log("Logged in successfully!");
     }
   };
 
@@ -96,16 +89,15 @@ export default function LoginPage() {
           </div>
 
           <div className="mt-6">
-            {providers &&
-              Object.values(providers).map((provider) => (
-                <Button
-                  key={provider.name}
-                  onClick={() => signIn(provider.id)}
-                  className="w-full bg-blue-500 hover:bg-blue-600 text-white"
-                >
-                  Sign in with {provider.name}
-                </Button>
-              ))}
+            {providers?.google && (
+              <Button
+                key={providers.google.name}
+                onClick={() => signIn(providers.google.id)}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Sign in with {providers.google.name}
+              </Button>
+            )}
           </div>
         </form>
 

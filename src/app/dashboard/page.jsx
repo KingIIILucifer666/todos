@@ -4,42 +4,76 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LogOut, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import axios from "axios";
 
 const Dashboard = () => {
+  const { data: session } = useSession();
   const router = useRouter();
-  const [tasks, setTasks] = useState([]);
-  const [newTask, setNewTask] = useState("");
-  const userId = "";
+  const [todos, setTodos] = useState([]);
+  const [newTodo, setNewTodo] = useState("");
+  const [loading, setLoading] = useState(true);
+  const userId = session.user.id;
 
   useEffect(() => {
-    const fetchPosts = async () => {
-      const response = await fetch(`/api/users/${userId}/posts`);
+    const fetchTodos = async () => {
+      const response = await fetch(`/api/user/${userId}/todos`);
       const data = await response.json();
 
-      setUserPosts(data);
+      setTodos(data);
+
+      // Stop loading if there are no todos
+      setLoading(data.length === 0 ? false : true);
     };
 
-    if (userId) fetchPosts();
+    if (userId) {
+      fetchTodos();
+    }
   }, [userId]);
 
-  const handleAddTask = () => {
-    if (newTask.trim()) {
-      setTasks([...tasks, { id: Date.now(), name: newTask.trim() }]);
-      setNewTask("");
+  console.log("New Todo: ", newTodo);
+
+  const handleAddTodo = async () => {
+    if (newTodo.trim()) {
+      try {
+        const newTodoData = {
+          creator: userId,
+          task: newTodo,
+          completed: false,
+        };
+
+        const response = await axios.post(`/api/todos/insert`, newTodoData);
+
+        setTodos([...todos, response.data]);
+        setNewTodo("");
+      } catch (error) {
+        console.error("Failed to add todo", error);
+      }
     }
   };
 
-  const handleDeleteTask = (id) => {
-    setTasks(tasks.filter((task) => task.id !== id));
+  const handleDeleteTodo = async (id) => {
+    try {
+      if (id) {
+        const response = await axios.delete(`/api/todos/${id}`);
+        if (response.status === 200) {
+          setTodos(todos.filter((todo) => todo._id !== id));
+          setLoading(false);
+          console.log("Todo deleted!");
+        } else {
+          return console.error("Error: ", response);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to delete todo", error);
+    }
   };
 
-  const handleEditTask = (taskId) => {
-    router.push(`/dashboard/${taskId}`);
+  const handleEditTodo = (todoId) => {
+    router.push(`/dashboard/${todoId}`);
   };
 
   const handleLogout = () => {
-    sessionStorage.setItem("token", null);
     signOut({ callbackUrl: "/" });
   };
 
@@ -62,13 +96,13 @@ const Dashboard = () => {
         <div className="flex items-center space-x-2 mb-6">
           <Input
             type="text"
-            value={newTask}
-            onChange={(e) => setNewTask(e.target.value)}
+            value={newTodo}
+            onChange={(e) => setNewTodo(e.target.value)}
             placeholder="Add a new task"
             className="w-full"
           />
           <Button
-            onClick={handleAddTask}
+            onClick={handleAddTodo}
             className="bg-blue-500 hover:bg-blue-600 text-white"
           >
             Add
@@ -76,31 +110,37 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-4">
-          {tasks.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center justify-between p-4 bg-gray-100 rounded-lg"
-            >
-              <span className="text-black">{task.name}</span>
-              <div className="flex items-center space-x-2">
-                {/* Edit Button */}
-                <Button
-                  onClick={() => handleEditTask(task.id)}
-                  className="bg-gray-400/20 text-gray-500 hover:bg-gray-400/30 shadow-none"
-                >
-                  Edit
-                </Button>
+          {todos.length > 0 ? (
+            todos.map((todo) => (
+              <div
+                key={todo._id}
+                className="flex items-center justify-between p-4 bg-gray-100 rounded-lg"
+              >
+                <span className="text-black">{todo.task}</span>
+                <div className="flex items-center space-x-2">
+                  {/* Edit Button */}
+                  <Button
+                    onClick={() => handleEditTodo(todo._id)}
+                    className="bg-gray-400/20 text-gray-500 hover:bg-gray-400/30 shadow-none"
+                  >
+                    Edit
+                  </Button>
 
-                {/* Delete Button */}
-                <Button
-                  onClick={() => handleDeleteTask(task.id)}
-                  className="bg-red-400/20 text-red-500 hover:bg-red-400/30 shadow-none"
-                >
-                  <Trash />
-                </Button>
+                  {/* Delete Button */}
+                  <Button
+                    onClick={() => handleDeleteTodo(todo._id)}
+                    className="bg-red-400/20 text-red-500 hover:bg-red-400/30 shadow-none"
+                  >
+                    <Trash />
+                  </Button>
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="flex items-center justify-center p-4 bg-gray-100 rounded-lg">
+              {loading ? "loading..." : "No Todos"}
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import { Schema, model, models } from "mongoose";
-import User from "@/models/userSchema"; // Ensure this path is correct
+import User from "@/models/userSchema";
 
 const TodoSchema = new Schema({
   creator: {
     type: Schema.Types.ObjectId,
-    ref: User, // Reference to User model
+    ref: User,
     required: true,
   },
   task: {
@@ -15,21 +15,20 @@ const TodoSchema = new Schema({
   },
   completed: {
     type: Boolean,
-    default: false, // Tracks whether the task is completed
+    default: false,
   },
   created_at: {
     type: Date,
-    default: Date.now, // Set default to the current timestamp
+    default: Date.now,
     required: true,
   },
   updated_at: {
     type: Date,
-    default: Date.now, // Set default to the current timestamp
+    default: Date.now,
     required: true,
   },
 });
 
-// Register the Todo model
 const Todo = models.Todo || model("Todo", TodoSchema);
 
 export default Todo;

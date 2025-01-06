@@ -1,4 +1,5 @@
 import { Schema, model, models } from "mongoose";
+import bcrypt from "bcrypt";
 
 const UserSchema = new Schema({
   email: {
@@ -18,6 +19,13 @@ const UserSchema = new Schema({
     type: String, // For credential-based users
     select: false, // Exclude password by default
   },
+});
+
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
+  next();
 });
 
 const User = models.User || model("User", UserSchema);

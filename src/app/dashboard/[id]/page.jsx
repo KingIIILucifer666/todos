@@ -1,76 +1,92 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft } from "lucide-react";
+import axios from "axios";
+import { Checkbox } from "@/components/ui/checkBox";
 
-export default function EditTaskPage() {
-  const [task, setTask] = useState([]);
-  const [taskName, setTaskName] = useState("");
+export default function EdittodoPage() {
   const router = useRouter();
-  const { id } = router;
-  const taskId = id;
+  const { id } = useParams();
+  const [todo, setTodo] = useState([]);
+  const [todoName, setTodoName] = useState("");
+  const [completed, setCompleted] = useState(false);
+  const todo_id = id;
 
   useEffect(() => {
-    if (!taskId) return;
-
-    const fetchTask = async () => {
-      const response = await fetch(`/api/user/${taskId}/todos`);
+    const fetchTodo = async () => {
+      const response = await fetch(`/api/todos/${todo_id}`);
       const data = await response.json();
-      setTask(data);
-      setTaskName(data.name);
+      setTodo(data || []);
+      setTodoName(data.task || "");
+      setCompleted(data.completed || false);
+
+      console.log(data);
     };
 
-    fetchTask();
-  }, [taskId]);
+    if (todo_id) {
+      fetchTodo();
+    }
+  }, [todo_id]);
 
-  const handleUpdateTask = async () => {
-    if (!taskName.trim()) return;
+  const handleChange = () => {
+    setCompleted((prevState) => !prevState);
+  };
 
-    // Update the task on the server (API call)
-    const response = await fetch(`/api/tasks/${taskId}`, {
-      method: "PUT",
-      body: JSON.stringify({ name: taskName }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+  const handleUpdateTodo = async () => {
+    if (!todoName.trim()) return;
 
-    if (response.ok) {
-      // After successful update, redirect back to the dashboard
-      router.push("/dashboard");
-    } else {
-      // Handle error, e.g., show a message or alert
-      console.error("Failed to update task");
+    try {
+      const response = await axios.patch(`/api/todos/${todo_id}`, {
+        task: todoName,
+        completed: completed,
+        updated_at: new Date().toISOString(),
+      });
+      if (response.status === 200) {
+        console.log("Todo updated: ", response);
+        router.push("/dashboard");
+      } else {
+        console.error("Failed to update todo", response);
+      }
+    } catch (error) {
+      console.error("Error updating todo:", error);
     }
   };
 
-  if (!task) {
-    return <div>Loading...</div>; // Show loading state while fetching task data
+  if (!todo) {
+    return <div>Loading...</div>;
   }
+
+  console.log(completed);
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center py-10 px-4 gap-5">
       <div className="max-w-4xl w-full bg-white rounded-lg p-6">
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-6">
-          Edit Task
+          Edit Todo
         </h2>
 
         <div className="flex items-center space-x-2 mb-6">
           <Input
             type="text"
-            value={taskName}
-            onChange={(e) => setTaskName(e.target.value)}
-            placeholder="Edit task"
+            value={todoName}
+            onChange={(e) => setTodoName(e.target.value)}
+            placeholder="Edit Todo"
             className="w-full"
           />
           <Button
-            onClick={handleUpdateTask}
+            onClick={handleUpdateTodo}
             className="bg-blue-500 hover:bg-blue-600 text-white"
           >
             Update
           </Button>
+        </div>
+
+        <div className="inline-flex items-center gap-3">
+          <Checkbox checked={completed} onChange={handleChange} />
+          <span className="text-xl">{completed ? "completed" : "pending"}</span>
         </div>
 
         <Button

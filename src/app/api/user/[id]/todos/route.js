@@ -5,7 +5,7 @@ export const GET = async (request, { params }) => {
   try {
     await connectToDB();
 
-    const id = params.id;
+    const id = await params.id;
     console.log("Todo ID: ", id);
 
     const todos = await Todo.find({ creator: id }).populate("creator");
