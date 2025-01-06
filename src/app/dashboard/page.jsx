@@ -13,7 +13,7 @@ const Dashboard = () => {
   const [todos, setTodos] = useState([]);
   const [newTodo, setNewTodo] = useState("");
   const [loading, setLoading] = useState(true);
-  const userId = session.user.id;
+  const userId = session?.user?.id;
 
   useEffect(() => {
     const fetchTodos = async () => {
